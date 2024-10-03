@@ -42,6 +42,10 @@ while getopts "a:r:l:o:t:h" opt; do
                 echo "Error: Threads (-t) must be a numeric value."
                 exit 1
             fi
+            if [ $THREADS -gt $(nproc) ]; then
+                echo "Error: You specified more threads than available ($THREADS > $(nproc)). Limited to the maximum available."
+                THREADS=$(nproc)
+            fi
             ;;
         h )
             usage

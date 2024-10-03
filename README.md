@@ -1,0 +1,3 @@
+# This repository contains the codebase and metadata for the annotation of all leishmania species.
+
+More information will be added soon...
