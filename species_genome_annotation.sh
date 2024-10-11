@@ -27,13 +27,12 @@ while getopts "a:r:l:o:t:h" opt; do
             ACCESSION=$OPTARG
             ;;
         r )
-            REFERENCE=$OPTARG
-            ;;
+            REFERENCE=$(readlink -f $OPTARG) 
         l )
             LINEAGE=$OPTARG
             ;;
         o )
-            OUTPUT_DIR=$OPTARG
+            OUTPUT_DIR=$(readlink -f $OPTARG) 
             ;;
         t )
             THREADS=$OPTARG
@@ -198,11 +197,11 @@ echo "Output directory path: $dirpath"
 # Run the Docker command for Braker3
 docker run --user 1000:100 --rm -it \
  -v "${dirpath}:/input" \
-  -v "${refdir}:/ref" \
-  -v "${dirpath}:/output" \
-  teambraker/braker3:latest \
-  braker.pl --genome="/input/${file_name}.masked" --prot_seq="/ref/${ref_name}" --workingdir=/output/braker3 --threads=$THREADS
-   --skipOptimize to have it run faster for testing
+ -v "${refdir}:/ref" \
+ -v "${dirpath}:/output" \
+ teambraker/braker3:latest \
+ braker.pl --genome="/input/${file_name}.masked" --prot_seq="/ref/${ref_name}" --workingdir=/output/braker3 --threads=$THREADS
+  # --skipOptimize to have it run faster for testing
 
 # Check if the braker.aa file was produced and is not empty
 if [ -f "$OUTPUT_DIR/$BASE_NAME/braker3/braker.aa" ] && [ -s "$OUTPUT_DIR/$BASE_NAME/braker3/braker.aa" ]; then
