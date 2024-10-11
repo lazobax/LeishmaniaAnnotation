@@ -360,3 +360,5 @@ formatted_runtime=$(printf "%02d:%02d:%02d" $hours $minutes $seconds)
 echo "Runtime: $formatted_runtime (HH:MM:SS)" >> "$log_file"
 
 #################################################################################################
+echo "Copying output to bucket!!"
+gsutil cp -r $OUTPUT_DIR gs://leishmania-annotated
