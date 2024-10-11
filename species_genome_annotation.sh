@@ -28,6 +28,7 @@ while getopts "a:r:l:o:t:h" opt; do
             ;;
         r )
             REFERENCE=$(readlink -f $OPTARG) 
+            ;;
         l )
             LINEAGE=$OPTARG
             ;;
@@ -83,7 +84,7 @@ fi
 mkdir -p $OUTPUT_DIR
 
 # Run the ncbi-genome-download command with the appropriate source, flat-output option, and retry option
-ncbi-genome-download invertebrate -s $SOURCE --assembly-accessions $ACCESSION --formats fasta --flat-output --output $OUTPUT_DIR -P -r 3
+ncbi-genome-download protozoa -s $SOURCE --assembly-accessions $ACCESSION --formats fasta --flat-output --output $OUTPUT_DIR -P -r 3
 
 # Check if the download was successful
 if [ $? -eq 0 ]; then
