@@ -60,7 +60,10 @@ while getopts "a:r:l:o:t:h" opt; do
 done
 
 # Check if required arguments are provided
-if [ -z "$ACCESSION" && -z "$SPECIES_FASTA" ] || [ -z "$REFERENCE" ] || [ -z "$LINEAGE" ]; then
+if [ -z "$ACCESSION" ] && [ -z "$SPECIES_FASTA" ]; then
+    echo "Error: Either a genome fasta (-f) or a valid genome accession number (-a) must be provided."
+    usage
+elif [ -z "$REFERENCE" ] || [ -z "$LINEAGE" ]; then
     usage
 fi
 
