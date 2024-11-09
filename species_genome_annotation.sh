@@ -60,7 +60,7 @@ while getopts "a:r:l:o:t:h" opt; do
 done
 
 # Check if required arguments are provided
-if [ -z "$ACCESSION" || -z "$SPECIES_FASTA" ] || [ -z "$REFERENCE" ] || [ -z "$LINEAGE" ]; then
+if [ -z "$ACCESSION" && -z "$SPECIES_FASTA" ] || [ -z "$REFERENCE" ] || [ -z "$LINEAGE" ]; then
     usage
 fi
 
