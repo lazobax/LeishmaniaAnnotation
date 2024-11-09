@@ -2,9 +2,12 @@
 
 # Function to display usage message
 usage() {
-    echo "Usage: $0 -a <accession_number> -r <reference_fasta> -l <lineage> -o <output_directory> -t <threads>"
+    echo "Usage: $0 [ -f <genome_fasta> | -a <accession_number> ] -r <reference_fasta> -l <lineage> -o <output_directory> -t <threads>"
     echo "Options:"
+    echo "  ------ a genome fasta or a valid genome accession number must be provided ------ "
+    echo "  -f <genome_fasta>        Genome FASTA file (.fa, .fna, .fasta)"
     echo "  -a <accession_number>    NCBI Species accession number (must start with GCA_ or GCF_)"
+    echo "  ------ if both provided, the genome fasta will be used --------- "
     echo "  -r <reference_fasta>     Reference FASTA file (.fa, .fna, .fasta)"
     echo "  -l <lineage>             BUSCO analysis lineage term (https://busco.ezlab.org/list_of_lineages.html)"
     echo "  -o <output_directory>    Output directory (default: current working directory)"
@@ -19,10 +22,13 @@ REFERENCE=""
 LINEAGE=""
 OUTPUT_DIR=$(pwd)  # Default output directory to the current working directory
 THREADS=8  # Default value for threads
-
+SPECIES_FASTA=""
 # Parse command line options using getopts
 while getopts "a:r:l:o:t:h" opt; do
     case ${opt} in
+        f )
+            SPECIES_FASTA=$(readlink -f $OPTARG)
+            ;;
         a )
             ACCESSION=$OPTARG
             ;;
@@ -54,7 +60,7 @@ while getopts "a:r:l:o:t:h" opt; do
 done
 
 # Check if required arguments are provided
-if [ -z "$ACCESSION" ] || [ -z "$REFERENCE" ] || [ -z "$LINEAGE" ]; then
+if [ -z "$ACCESSION" || -z "$SPECIES_FASTA" ] || [ -z "$REFERENCE" ] || [ -z "$LINEAGE" ]; then
     usage
 fi
 
@@ -70,54 +76,67 @@ if ! [[ "$REFERENCE" =~ \.(fa|fna|fasta)$ ]]; then
     exit 1
 fi
 
-# Determine if accession is GenBank or RefSeq
-if [[ $ACCESSION =~ ^GCA_ ]]; then
-    SOURCE="genbank"
-elif [[ $ACCESSION =~ ^GCF_ ]]; then
-    SOURCE="refseq"
+if [[ -z "$SPECIES_FASTA" ]]; then
+    echo "No Species Fasta file provided. Continuing with Accession"
+
+    # Determine if accession is GenBank or RefSeq
+    if [[ $ACCESSION =~ ^GCA_ ]]; then
+        SOURCE="genbank"
+    elif [[ $ACCESSION =~ ^GCF_ ]]; then
+        SOURCE="refseq"
+    else
+        echo "Error: Accession number must start with GCA_ (GenBank) or GCF_ (RefSeq)"
+        exit 1
+    fi
+
+    # Create output directory if it doesn't exist
+    mkdir -p $OUTPUT_DIR
+
+    # Run the ncbi-genome-download command with the appropriate source, flat-output option, and retry option
+    ncbi-genome-download protozoa -s $SOURCE --assembly-accessions $ACCESSION --formats fasta --flat-output --output $OUTPUT_DIR -P -r 3
+
+    # Check if the download was successful
+    if [ $? -eq 0 ]; then
+        echo "Download completed successfully and saved in $OUTPUT_DIR"
+    else
+        echo "Error: Download failed"
+        exit 1
+    fi
+
+    # Find the downloaded file
+    DOWNLOADED_FILE=$(find $OUTPUT_DIR -maxdepth 1 -type f -name "*.fna.gz")
+
+    # Extract the file if it exists
+    if [ -f "$DOWNLOADED_FILE" ]; then
+        # Extract the file
+        gunzip "$DOWNLOADED_FILE"
+
+        # Get the base name of the file without the .fna.gz extension
+        BASE_NAME=$(basename "$DOWNLOADED_FILE" .fna.gz)
+
+        # Set the species FASTA file path
+        SPECIES_FASTA="$OUTPUT_DIR/$BASE_NAME/$BASE_NAME.fna"
+
+        # Create a directory with the base name
+        mkdir -p "$OUTPUT_DIR/$BASE_NAME"
+    echo "$OUTPUT_DIR/$BASE_NAME"
+    chmod 777 "$OUTPUT_DIR/$BASE_NAME" 
+
+        # Move the extracted .fna file to the new directory
+        mv "$OUTPUT_DIR/$BASE_NAME.fna" "$SPECIES_FASTA"
+    else
+        echo "Error: Downloaded file not found."
+        exit 1
+    fi
 else
-    echo "Error: Accession number must start with GCA_ (GenBank) or GCF_ (RefSeq)"
-    exit 1
-fi
-
-# Create output directory if it doesn't exist
-mkdir -p $OUTPUT_DIR
-
-# Run the ncbi-genome-download command with the appropriate source, flat-output option, and retry option
-ncbi-genome-download protozoa -s $SOURCE --assembly-accessions $ACCESSION --formats fasta --flat-output --output $OUTPUT_DIR -P -r 3
-
-# Check if the download was successful
-if [ $? -eq 0 ]; then
-    echo "Download completed successfully and saved in $OUTPUT_DIR"
-else
-    echo "Error: Download failed"
-    exit 1
-fi
-
-# Find the downloaded file
-DOWNLOADED_FILE=$(find $OUTPUT_DIR -maxdepth 1 -type f -name "*.fna.gz")
-
-# Extract the file if it exists
-if [ -f "$DOWNLOADED_FILE" ]; then
-    # Extract the file
-    gunzip "$DOWNLOADED_FILE"
-
-    # Get the base name of the file without the .fna.gz extension
-    BASE_NAME=$(basename "$DOWNLOADED_FILE" .fna.gz)
-
-    # Set the species FASTA file path
-    SPECIES_FASTA="$OUTPUT_DIR/$BASE_NAME/$BASE_NAME.fna"
-
     # Create a directory with the base name
+    BASE_NAME=$(basename "$SPECIES_FASTA" .fa)
     mkdir -p "$OUTPUT_DIR/$BASE_NAME"
-echo "$OUTPUT_DIR/$BASE_NAME"
-chmod 777 "$OUTPUT_DIR/$BASE_NAME" 
+    chmod 777 "$OUTPUT_DIR/$BASE_NAME" 
 
-    # Move the extracted .fna file to the new directory
-    mv "$OUTPUT_DIR/$BASE_NAME.fna" "$SPECIES_FASTA"
-else
-    echo "Error: Downloaded file not found."
-    exit 1
+    # Copy the species FASTA file to the new directory
+    cp "$SPECIES_FASTA" "$OUTPUT_DIR/$BASE_NAME/$BASE_NAME.fa"
+    SPECIES_FASTA="$OUTPUT_DIR/$BASE_NAME/$BASE_NAME.fa"
 fi
 
 # Change working directory to the newly created directory
