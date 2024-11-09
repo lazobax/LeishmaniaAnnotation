@@ -24,7 +24,7 @@ OUTPUT_DIR=$(pwd)  # Default output directory to the current working directory
 THREADS=8  # Default value for threads
 SPECIES_FASTA=""
 # Parse command line options using getopts
-while getopts "a:r:l:o:t:h" opt; do
+while getopts "f:a:r:l:o:t:h" opt; do
     case ${opt} in
         f )
             SPECIES_FASTA=$(readlink -f $OPTARG)
