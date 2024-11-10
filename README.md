@@ -56,8 +56,14 @@ If you face any of the [common issues](https://interproscan-docs.readthedocs.io/
 ```
 pip install ncbi-genome-download
 ```
-9- Download the appropriate reference protein file from [here](https://bioinf.uni-greifswald.de/bioinf/partitioned_odb11/index.html). Ensure that the reference is unzipped and has appropriate read permissions to be opened with docker: `chmod 664 <reference_fasta>`
-9- Make sure you have read and write permissions to our input and output directories
+9- Create and environment and install the dependencies for the remove_isoforms module:
+```
+mamba create -n remove_isoforms
+mamba activate remove_isoforms
+pip install biopython
+```
+10- Download the appropriate reference protein file from [here](https://bioinf.uni-greifswald.de/bioinf/partitioned_odb11/index.html). Ensure that the reference is unzipped and has appropriate read permissions to be opened with docker: `chmod 664 <reference_fasta>`
+11- Make sure you have read and write permissions to our input and output directories
 
 ### Runtime Guide (Ubuntu)
 
@@ -73,6 +79,13 @@ bash species_genome_annotation.sh -a <accession_number> -r <reference_fasta> -l 
 -t &emsp; Specify the number of threads to use, not recommended above 32, default is 8 <br />
 -h &emsp; Display the help message
 
+### Remove Isoforms
+
+After species annotation is done, ensure the `remove_isoforms` directory is present and run:
+```
+bash remove_isoforms/remove_isoforms.sh <BASE_NAME>
+```
+where `BASE_NAME` is the name of the directory created by the annotation process. 
 # Internal Use Only
 
 Use [this](https://docs.google.com/spreadsheets/d/1T5bppsxjcP-ijXO7hZwROMfdQBziSisld_oGEBAJ16I/edit?usp=sharing) spreadsheet to track which species must be annotated and use their respective NCBI acession numbers to run the script as indicated below:

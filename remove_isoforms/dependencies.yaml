@@ -1,0 +1,13 @@
+name: my_environment  # Replace with your preferred environment name
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.8  # or any version your scripts require
+  - biopython  # for Bio.Seq, SeqIO, SeqRecord
+  - predictionAnalysis  # ensure this package is installed or accessible if it’s custom
+  - re  
+  - argparse  
+  - csv  
+
+
