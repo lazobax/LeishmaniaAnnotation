@@ -46,7 +46,7 @@ remove_isoforms(){
     fi
 
     mv "${proteome_noiso%.fa}_annotated.fa" ../finalProteomes/${BASE_NAME}
-    mv "${tsv%.tsv}_noiso.tsv" ../finalProteomes/${BASE_NAME}
+    mv "${tsv%.fa.tsv}_noiso.fa.tsv" ../finalProteomes/${BASE_NAME}
 
 
 }
