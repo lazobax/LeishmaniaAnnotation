@@ -95,7 +95,7 @@ filter_tsv_by_proteome() {
     
     local tsv_file="$2"
     local proteome_file="$1"
-    local output_file="${tsv_file%.tsv}_noiso.tsv"
+    local output_file="${tsv_file%.fa.tsv}_noiso.fa.tsv"
     local temp_headers_file=$(mktemp)
 
     # Extract headers from the proteome file and save to a temporary file
