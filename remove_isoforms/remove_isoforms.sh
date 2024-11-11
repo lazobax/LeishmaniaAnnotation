@@ -7,7 +7,6 @@ remove_isoforms(){
     cd braker3
     echo "we are currently in the braker directory:"
     pwd
-    conda activate remove_isoform
 
     sudo ../../remove_isoforms/selectSupportedSubsets.py --fullSupport FULLSUPPORT --anySupport ANYSUPPORT --noSupport NOSUPPORT braker.gtf hintsfile.gff
     python ../../remove_isoforms/print_longest_isoform.py ANYSUPPORT > braker_noiso.gtf
@@ -23,7 +22,6 @@ remove_isoforms(){
     echo "we are currently in the $BASE_NAME directory:"
     pwd
     # Deactivating the previous conda environment and activating the correct one
-    conda deactivate
 
     proteome_noiso="${BASE_NAME}_proteome_noiso.fa"
     tsv="${BASE_NAME}_proteome.fa.tsv"
@@ -131,5 +129,4 @@ main(){
 }
 
 
-source ~/miniforge3/etc/profile.d/conda.sh
 main $1
