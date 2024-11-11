@@ -125,6 +125,7 @@ main(){
 
         cd $BASE_NAME
         remove_isoforms $BASE_NAME
+        cd ..
     done
 }
 
