@@ -11,130 +11,30 @@ remove_isoforms(){
 
     sudo ../../remove_isoforms/selectSupportedSubsets.py --fullSupport FULLSUPPORT --anySupport ANYSUPPORT --noSupport NOSUPPORT braker.gtf hintsfile.gff
     python ../../remove_isoforms/print_longest_isoform.py ANYSUPPORT > braker_noiso.gtf
-    # awk -F'\t' '{split($1, arr, "_"); $1=arr[1]; print}' OFS='\t' braker_noiso.gtf > noiso.gtf # this might not work if the header ID has an underscore in it, for ex XP_19871203.1_Drosophila
-    python ../../remove_isoforms/getAnnoFastaFromJoingenes.py -g ../*fa.masked -o "${BASE_NAME}"_proteome_noiso -f braker_noiso.gtf
+    awk -F'\t' '{split($1, arr, "_"); $1=arr[1]; print}' OFS='\t' braker_noiso.gtf > noiso.gtf # this might not work if the header ID has an underscore in it, for ex XP_19871203.1_Drosophila
+    python ../../remove_isoforms/getAnnoFastaFromJoingenes.py -g ../*masked -o "${BASE_NAME}"_proteome_noiso -f noiso.gtf
 
 
     # Copy the braker.aa file to the main directory and rename it
     cp "${BASE_NAME}"_proteome_noiso.aa ../"${BASE_NAME}"_proteome_noiso.fa
+
+
     cd ../
     echo "we are currently in the $BASE_NAME directory:"
     pwd
     # Deactivating the previous conda environment and activating the correct one
     conda deactivate
-    conda activate busco_annotation
-    #################################################################################################
+
+    proteome_noiso="${BASE_NAME}_proteome_noiso.fa"
+    tsv="${BASE_NAME}_proteome.fa.tsv"
+    headers="${BASE_NAME}_annotated_headers.txt"
+    
+    filter_tsv_by_proteome ${proteome_noiso} ${tsv}
+    update_proteome_headers ${proteome_noiso} ${headers}
 
    
-    busco -i "${BASE_NAME}_proteome_noiso.fa" -o ${BASE_NAME}_noiso_busco_annotated -m protein -l $LINEAGE --cpu $THREADS -f
-    rm -r "busco_downloads"
-    
-
-    # Deactivating the previous conda environment to run interproscan in base
-    conda deactivate
-    #################################################################################################
-
-    echo "Running Interproscan"
-    sed -i 's/*//g' "${BASE_NAME}_proteome_noiso.fa"
-    bash ~/my_interproscan/interproscan-5.69-101.0/interproscan.sh -i "${BASE_NAME}_proteome_noiso.fa" -f tsv -d "$BASE_NAME" -cpu $THREADS
-
-    # Check if the braker.aa file was produced and is not empty
-    if [ -f "${BASE_NAME}_proteome_noiso.fa.tsv" ] && [ -s "${BASE_NAME}_proteome_noiso.fa.tsv" ]; then
-        echo "Interproscan ran successfully."
-    else
-        echo "Error: proteome.fa.tsv file not found or is empty in the directory $BASE_NAME, please recheck your run."
-        exit 1
-    fi
-
-    #################################################################################################
-
-    echo "Processing final proteome file"
-    # Files
-    input_file="${BASE_NAME}_proteome_noiso.fa.tsv"
-    proteome_file="${BASE_NAME}_proteome_noiso.fa"
-    header_file="${BASE_NAME}_annotated_headers_noiso.txt"
-    output_file="${BASE_NAME}_annotated_proteome_noiso.fa"
-
-    awk -F'\t' '
-    {
-        id = $1
-        e_value = $9
-        col6 = $6
-
-        # Store the first line for each ID
-        if (!(id in first_line)) {
-            first_line[id] = ">" id " " col6
-        }
-
-        # Skip lines with "-" in e-value or column 6
-        if (e_value == "-" || col6 == "-") {
-            next
-        }
-
-        # Store the line with the lowest e-value for each ID
-        if (!(id in min_e_value) || e_value < min_e_value[id]) {
-            min_e_value[id] = e_value
-            line[id] = ">" id " " col6
-        }
-    }
-    END {
-        for (id in first_line) {
-            if (id in line) {
-                print line[id]
-            } else {
-                print first_line[id]
-            }
-        }
-    }' "$input_file" | sort -k1,1 > "$header_file"
-
-    comm -13 \
-        <(awk -F'\t' '{print ">" $1}' "$input_file" | sort -u) \
-        <(grep ">" "$proteome_file" | sort -u) >> "$header_file"
-
-
-    #######################################################
-
-    # Create a temporary file to hold the replacement data
-    temp_file=$(mktemp)
-
-    # Prepare the header dictionary in awk format
-    awk '{
-        if (substr($0, 1, 1) == ">") {
-            key = substr($1, 2)
-            $1 = ""
-            desc[key] = substr($0, 2)
-        }
-    } END {
-        for (k in desc) {
-            print k "\t" desc[k]
-        }
-    }' $header_file > $temp_file
-
-    # Replace headers in the fasta file with the descriptions
-    awk -v header_file="$temp_file" '
-    BEGIN {
-        while ((getline < header_file) > 0) {
-            header[$1] = $2
-        }
-    }
-    {
-        if (substr($0, 1, 1) == ">") {
-            id = substr($1, 2)
-            if (id in header) {
-                print ">" id " " header[id]
-            } else {
-                print $0
-            }
-        } else {
-            print $0
-        }
-    }' $proteome_file > $output_file
-
-    # Clean up
-    rm $temp_file
-
     # Check if the output file exists and is not empty
-    if [ -s "$output_file" ]; then
+    if [ -s "${proteome_noiso%.fa}_annotated.fa" ]; then
         echo "************************************************************"
         echo "*                                                          *"
         echo "*               Isoforms Removed Succesfully               *"
@@ -147,12 +47,69 @@ remove_isoforms(){
         exit 1
     fi
 
+    mv "${proteome_noiso%.fa}_annotated.fa" ../finalProteomes/${BASE_NAME}
+    mv "${tsv%.tsv}_noiso.tsv" ../finalProteomes/${BASE_NAME}
+
+
 }
 
-remove_isoforms_meta(){
-    BASE_NAME=$1
-    cd $BASE_NAME
-    remove_isoforms $BASE_NAME
+#updates the isoform-free proteome headers with their annotational description
+update_proteome_headers () {
+    local proteome_file="$1"
+    local headers_file="$2"
+    local output_file="${proteome_file%.fa}_annotated.fa"
+
+    # Create a temporary associative array to store header mappings
+    declare -A headers_map
+
+    # Read the headers file and populate the associative array
+    while IFS= read -r line; do
+        header_name=$(echo "$line" | awk '{print $1}' | sed 's/>//')
+        headers_map["$header_name"]="$line"
+    done < "$headers_file"
+
+    # Process the proteome file
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^\> ]]; then  # Corrected quoting
+            # Extract the header name (without the '>' sign)
+            header_name=$(echo "$line" | awk '{print $1}' | sed 's/>//')
+
+            # Check if there's a replacement in headers_map
+            if [[ -n "${headers_map[$header_name]}" ]]; then
+                # Replace the line with the matched line from headers_map
+                echo "${headers_map[$header_name]}"
+            else
+                # If no match, print the original line
+                echo "$line"
+            fi
+        else
+            # Print sequence lines as they are
+            echo "$line"
+        fi
+    done < "$proteome_file" > "$output_file"
+
+    echo "Updated proteome saved as $output_file"
+}
+
+
+#retains tsv entries that are found in isoform-free proteome
+filter_tsv_by_proteome() {
+    
+    local tsv_file="$2"
+    local proteome_file="$1"
+    local output_file="${tsv_file%.tsv}_noiso.tsv"
+    local temp_headers_file=$(mktemp)
+
+    # Extract headers from the proteome file and save to a temporary file
+    grep "^>" "$proteome_file" | cut -d' ' -f1 | cut -c2- > "$temp_headers_file"
+
+    # Use awk to filter TSV lines where the first column matches a header
+    awk -F'\t' 'NR==FNR { headers[$1]; next } $1 in headers' "$temp_headers_file" "$tsv_file" > "$output_file"
+
+    # Clean up the temporary file
+    rm "$temp_headers_file"
+
+    echo "Filtered output written to $output_file"
 }
 
 main(){
@@ -170,14 +127,9 @@ main(){
 
         cd $BASE_NAME
         remove_isoforms $BASE_NAME
-
-        # Move all output files to the subdirectory
-        mv *"noiso"* "$SUBDIR"
     done
 }
 
 
-source ~/miniconda3/etc/profile.d/conda.sh
-THREADS=32
-LINEAGE="euglenozoa"
+source ~/miniforge3/etc/profile.d/conda.sh
 main $1
