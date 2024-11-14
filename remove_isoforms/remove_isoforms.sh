@@ -68,7 +68,7 @@ update_proteome_headers () {
 
     # Process the proteome file
     while IFS= read -r line; do
-        if [[ "$line" =~ ^\> ]]; then  # Corrected quoting
+        if [[ "$line" =~ ^\> ]]; then  
             # Extract the header name (without the '>' sign)
             header_name=$(echo "$line" | awk '{print $1}' | sed 's/>//')
 
