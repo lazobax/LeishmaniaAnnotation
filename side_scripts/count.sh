@@ -2,13 +2,13 @@
 # Counts the percentage of hypothetical proteins in a fasta file
 
 # Check if the script is being run in a directory with .fasta files
-if ! ls *.fasta 1> /dev/null 2>&1; then
+if ! ls *.fa* 1> /dev/null 2>&1; then
     echo "No .fasta files found in the current directory."
     exit 1
 fi
 
 # Loop through each .fasta file in the current directory
-for file in *.fasta; do
+for file in *.fa*; do
     # Count occurrences of "hypothetical" (case insensitive)
     hypothetical_count=$(grep -i "hypothetical" "$file" | wc -l)
     
