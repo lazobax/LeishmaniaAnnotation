@@ -44,7 +44,7 @@ with open("filenames.txt", "r") as file:
 
 for sp in species_list:
     # Specify the input GBFF file and output FASTA file
-    gbff_file = f"gbffs/{sp}.gbff"
+    gbff_file = f"{sp}.gbff"
     output_fasta = f"{sp}noiso.fasta"
 
     # Extract the proteome without isoforms
