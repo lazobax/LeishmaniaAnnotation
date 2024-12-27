@@ -115,24 +115,34 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 def extract_proteome_no_isoforms(gbff_file, output_fasta):
+    """
+    Keeps only the longest isoform per gene from a GenBank (.gbff) file
+    and writes these sequences to the specified FASTA file.
+    """
     print(f"Processing {gbff_file}")
     proteins = {}
 
     for record in SeqIO.parse(gbff_file, "genbank"):
         for feature in record.features:
             if feature.type == "CDS":
-                gene_name = feature.qualifiers.get("gene", ["unknown_gene"])[0]
+                # Use gene name (if missing, fallback to "unknown_gene")
+                gene_name = feature.qualifiers.get("locus_tag", ["unknown_gene"])[0]
+                # Use protein_id if present, else fallback to gene_name
                 protein_id = feature.qualifiers.get("protein_id", [gene_name])[0]
+                # Use the product description if present, else fallback to "unknown_product"
                 product = feature.qualifiers.get("product", ["unknown_product"])[0]
 
+                # Check if there's an actual protein translation
                 if "translation" in feature.qualifiers:
                     protein_seq = feature.qualifiers["translation"][0]
                     
-                    # If we have already seen this gene_name, keep the longest
+                    # If we've seen this gene before, see if new isoform is longer
                     if gene_name in proteins:
                         existing_protein = proteins[gene_name]
                         if len(protein_seq) > len(existing_protein.seq):
-                            # Replace with the longer isoform
+                            print(f"Replacing isoform for gene '{gene_name}' "
+                                  f"({len(existing_protein.seq)} aa) with longer isoform "
+                                  f"({len(protein_seq)} aa).")
                             protein_record = SeqRecord(
                                 Seq(protein_seq),
                                 id=protein_id,
@@ -140,17 +150,17 @@ def extract_proteome_no_isoforms(gbff_file, output_fasta):
                                 description=f"{gene_name} {product}"
                             )
                             proteins[gene_name] = protein_record
-                        continue
+                    else:
+                        # First isoform for this gene—store it
+                        protein_record = SeqRecord(
+                            Seq(protein_seq),
+                            id=protein_id,
+                            name=gene_name,
+                            description=f"{gene_name} {product}"
+                        )
+                        proteins[gene_name] = protein_record
 
-                    # Otherwise, add this as the first isoform for the gene
-                    protein_record = SeqRecord(
-                        Seq(protein_seq),
-                        id=protein_id,
-                        name=gene_name,
-                        description=f"{gene_name} {product}"
-                    )
-                    proteins[gene_name] = protein_record
-
+    # Write one protein per gene (the longest isoform) to the FASTA output
     SeqIO.write(proteins.values(), output_fasta, "fasta")
 
 if __name__ == "__main__":
@@ -187,7 +197,7 @@ run_interproscan() {
 
     # REPLACE !!! BELOW WITH /home/<user_name> BECAUSE FOR SOME REASON ~ DIDN'T WORK
     # Example path to your InterProScan installation:
-    local interproscan_bin="!!!/my_interproscan/interproscan-5.69-101.0/interproscan.sh"
+    local interproscan_bin="/home/lazo_ozal/my_interproscan/interproscan-5.69-101.0/interproscan.sh"
 
     bash "${interproscan_bin}" \
         -i "${noiso_fasta}" \
