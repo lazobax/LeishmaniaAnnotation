@@ -185,8 +185,9 @@ run_interproscan() {
 
     echo "Running InterProScan for ${safe_species}"
 
+    # REPLACE !!! BELOW WITH /home/<user_name> BECAUSE FOR SOME REASON ~ DIDN'T WORK
     # Example path to your InterProScan installation:
-    local interproscan_bin="~/my_interproscan/interproscan-5.69-101.0/interproscan.sh"
+    local interproscan_bin="!!!/my_interproscan/interproscan-5.69-101.0/interproscan.sh"
 
     bash "${interproscan_bin}" \
         -i "${noiso_fasta}" \
